@@ -24,8 +24,10 @@ from export_pack import (
     build_full_package_zip,
 )
 from db import (
+    admin_exists,
     init_db,
     seed_demo_data,
+    ensure_org,
     get_user_by_email,
     list_orgs,
     list_users,
@@ -70,6 +72,33 @@ def hash_password(pw: str) -> str:
 def verify_password(pw: str, pw_hash: str) -> bool:
     return bcrypt.checkpw(pw.encode("utf-8"), pw_hash.encode("utf-8"))
 
+
+def bootstrap_admin_from_secrets():
+    try:
+        secret_email = st.secrets.get("ADMIN_EMAIL")
+        secret_password = st.secrets.get("ADMIN_PASSWORD")
+        secret_name = st.secrets.get("ADMIN_NAME", "GALLOP Admin")
+        secret_org_id = st.secrets.get("ADMIN_ORG_ID", "ORG_ADMIN")
+        secret_org_name = st.secrets.get("ADMIN_ORG_NAME", "GALLOP Admin Org")
+    except Exception:
+        return
+
+    if not secret_email or not secret_password:
+        return
+
+    if admin_exists():
+        return
+
+    ensure_org(secret_org_id, secret_org_name)
+    db_create_user(
+        secret_email,
+        secret_name,
+        hash_password(secret_password),
+        secret_org_id,
+        "admin",
+        "active",
+    )
+
 # -------------------------------------------------
 # Permissions
 # -------------------------------------------------
@@ -94,6 +123,7 @@ def can_admin(role: str) -> bool:
 # -------------------------------------------------
 init_db()
 seed_demo_data(hash_password)
+bootstrap_admin_from_secrets()
 
 
 # Login

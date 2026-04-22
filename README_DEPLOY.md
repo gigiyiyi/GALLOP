@@ -51,7 +51,33 @@ Do not commit:
    - main file path: `app.py`
 6. Open `Advanced settings`.
 7. Select Python `3.12` if needed.
-8. Click `Deploy`.
+8. Paste admin credentials into `Secrets` using the TOML block below.
+9. Click `Deploy`.
+
+## Streamlit Secrets For First Admin Bootstrap
+
+Paste this into the `Secrets` box in Streamlit Community Cloud:
+
+```toml
+ADMIN_EMAIL = "your-admin-email@example.com"
+ADMIN_PASSWORD = "choose-a-strong-password"
+ADMIN_NAME = "GALLOP Admin"
+ADMIN_ORG_ID = "ORG_ADMIN"
+ADMIN_ORG_NAME = "GALLOP Admin Org"
+```
+
+How it works:
+
+- if no admin exists yet, the app creates one from these secrets at startup
+- if an admin already exists, the app does nothing
+- the admin credentials are not stored in GitHub
+
+Recommended:
+
+- use a strong password
+- use your real admin email
+- keep these values only in Streamlit `Secrets`
+- do not paste them into the public repo
 
 ## What happens on first launch
 
@@ -60,6 +86,7 @@ The app initializes its own local SQLite database on the deployment environment.
 Current behavior:
 
 - demo users are seeded by the app
+- an admin can be bootstrapped securely from Streamlit `Secrets`
 - the database starts fresh on the deployed instance
 - local uploaded files from your development machine are not included
 

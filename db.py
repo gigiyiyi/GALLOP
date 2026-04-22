@@ -305,6 +305,22 @@ def create_user(email: str, name: str, password_hash: str, org_id: str, role: st
     return user_id
 
 
+def ensure_org(org_id: str, org_name: str):
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO orgs(org_id, org_name) VALUES (?, ?)",
+            (org_id, org_name),
+        )
+
+
+def admin_exists() -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS c FROM users WHERE role='admin'"
+        ).fetchone()
+        return bool(row["c"])
+
+
 def update_user_status(user_id: str, status: str):
     with get_conn() as conn:
         conn.execute(
