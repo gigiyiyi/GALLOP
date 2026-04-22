@@ -264,6 +264,63 @@ def get_user_by_email(email: str):
         ).fetchone()
 
 
+def list_orgs():
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM orgs ORDER BY org_name ASC"
+        ).fetchall()
+
+
+def list_users():
+    with get_conn() as conn:
+        return conn.execute(
+            """
+            SELECT u.*, o.org_name
+            FROM users u
+            LEFT JOIN orgs o ON o.org_id = u.org_id
+            ORDER BY u.created_at DESC
+            """
+        ).fetchall()
+
+
+def create_user(email: str, name: str, password_hash: str, org_id: str, role: str, status: str = "active") -> str:
+    user_id = str(uuid.uuid4())
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO users(user_id, email, name, password_hash, org_id, role, status, created_at)
+            VALUES (?,?,?,?,?,?,?,?)
+            """,
+            (
+                user_id,
+                email.strip().lower(),
+                name.strip(),
+                password_hash,
+                org_id,
+                role,
+                status,
+                now_iso(),
+            ),
+        )
+    return user_id
+
+
+def update_user_status(user_id: str, status: str):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET status=? WHERE user_id=?",
+            (status, user_id),
+        )
+
+
+def update_user_password(user_id: str, password_hash: str):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET password_hash=? WHERE user_id=?",
+            (password_hash, user_id),
+        )
+
+
 def list_records_for_org(org_id: str):
     with get_conn() as conn:
         return conn.execute(

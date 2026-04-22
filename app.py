@@ -1,4 +1,5 @@
 from ui.dashboard import render_dashboard
+from ui.admin import render_admin_page
 import re
 from ui.workspace import (
     _parse_issue,
@@ -26,9 +27,12 @@ from db import (
     init_db,
     seed_demo_data,
     get_user_by_email,
+    list_orgs,
+    list_users,
     list_records_for_org,
     get_record_for_org,
     create_record,
+    create_user as db_create_user,
     list_txns,
     replace_txns,
     list_nodes,
@@ -40,6 +44,8 @@ from db import (
     insert_evidence,
     update_evidence_link,
     update_record_contact,
+    update_user_status,
+    update_user_password,
     submit_record,
     seal_record,
     downgrade_record,
@@ -77,6 +83,10 @@ def can_edit(role: str) -> bool:
 
 def can_seal(role: str) -> bool:
     return role in ("admin", "participant")
+
+
+def can_admin(role: str) -> bool:
+    return role == "admin"
 
 
 # -------------------------------------------------
@@ -136,6 +146,8 @@ if st.sidebar.button(t("sidebar.logout")):
 st.title(t("app.title"))
 
 NAV_PAGES = [t("nav.dashboard"), t("nav.workspace")]
+if can_admin(u["role"]):
+    NAV_PAGES.append(t("nav.admin"))
 
 if st.session_state.get("nav_page") not in NAV_PAGES:
     st.session_state["nav_page"] = NAV_PAGES[0]
@@ -362,6 +374,16 @@ if page == t("nav.dashboard"):
         u, can_create, create_record, list_records_for_org,
         list_txns, list_nodes, list_geos, list_evidences,
         validate_record_v1
+    )
+elif can_admin(u["role"]) and page == t("nav.admin"):
+    render_admin_page(
+        u,
+        list_users,
+        list_orgs,
+        db_create_user,
+        update_user_status,
+        update_user_password,
+        hash_password,
     )
 elif page == t("nav.workspace"):
 
