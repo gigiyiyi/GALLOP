@@ -142,6 +142,7 @@ def init_db():
 
                 -- Row 2: Procurement & Production
                 input_node_name TEXT,
+                reporting_node_name TEXT,
                 quantity_unit TEXT,
                 input_quantity REAL,
                 output_quantity REAL,
@@ -176,6 +177,7 @@ def init_db():
         _ensure_column(conn, "txns", "product_weight", "REAL")
         _ensure_column(conn, "txns", "product_volume", "REAL")
         _ensure_column(conn, "txns", "input_node_name", "TEXT")
+        _ensure_column(conn, "txns", "reporting_node_name", "TEXT")
         _ensure_column(conn, "txns", "quantity_unit", "TEXT")
         _ensure_column(conn, "txns", "input_quantity", "REAL")
         _ensure_column(conn, "txns", "output_quantity", "REAL")
@@ -185,6 +187,7 @@ def init_db():
         _ensure_column(conn, "txns", "assessment_risk_level", "TEXT")
         _ensure_column(conn, "txns", "assessment_conclusion", "TEXT")
         _ensure_column(conn, "txns", "input_node_id", "TEXT")
+        _ensure_column(conn, "txns", "reporting_node_id", "TEXT")
         _ensure_column(conn, "txns", "output_node_id", "TEXT")
         _ensure_column(conn, "nodes", "address_production", "TEXT")
         _ensure_column(conn, "nodes", "address_registration", "TEXT")
@@ -462,12 +465,12 @@ def replace_txns(record_id: str, rows: list[dict]):
                     txn_id, record_id,
                     product_name, output_node_name, species_common, species_latin,
                     product_weight, product_volume, geo_id,
-                    input_node_name, input_node_id, output_node_id, quantity_unit, input_quantity, output_quantity,
+                    input_node_name, reporting_node_name, input_node_id, reporting_node_id, output_node_id, quantity_unit, input_quantity, output_quantity,
                     production_start_date, production_end_date, batch_label,
                     assessment_risk_level, assessment_conclusion,
                     created_at, updated_at
                 )
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     txn_id, record_id,
@@ -479,7 +482,9 @@ def replace_txns(record_id: str, rows: list[dict]):
                     r.get("product_volume"),
                     (r.get("geo_id") or "").strip() or None,
                     (r.get("input_node_name") or "").strip() or None,
+                    (r.get("reporting_node_name") or "").strip() or None,
                     (r.get("input_node_id") or "").strip() or None,
+                    (r.get("reporting_node_id") or "").strip() or None,
                     (r.get("output_node_id") or "").strip() or None,
                     (r.get("quantity_unit") or "").strip() or None,
                     r.get("input_quantity"),
@@ -580,15 +585,15 @@ def upsert_node_by_name(record_id: str, name: str) -> str:
     return create_node(record_id, nm)
 
 
-def update_txn_node_ids(txn_id: str, record_id: str, input_node_id: str | None, output_node_id: str | None):
+def update_txn_node_ids(txn_id: str, record_id: str, input_node_id: str | None, reporting_node_id: str | None, output_node_id: str | None):
     with get_conn() as conn:
         conn.execute(
             """
             UPDATE txns
-            SET input_node_id=?, output_node_id=?, updated_at=?
+            SET input_node_id=?, reporting_node_id=?, output_node_id=?, updated_at=?
             WHERE txn_id=? AND record_id=?
             """,
-            (input_node_id, output_node_id, now_iso(), txn_id, record_id),
+            (input_node_id, reporting_node_id, output_node_id, now_iso(), txn_id, record_id),
         )
         touch_record_activity(record_id, conn)
 
@@ -598,15 +603,18 @@ def resolve_nodes_for_record(record_id: str):
 
     for t in txns:
         in_name = (t["input_node_name"] or "").strip()
+        reporting_name = (t["reporting_node_name"] or "").strip()
         out_name = (t["output_node_name"] or "").strip()
 
         in_id = upsert_node_by_name(record_id, in_name) if in_name else None
+        reporting_id = upsert_node_by_name(record_id, reporting_name) if reporting_name else None
         out_id = upsert_node_by_name(record_id, out_name) if out_name else None
 
         update_txn_node_ids(
             txn_id=t["txn_id"],
             record_id=record_id,
             input_node_id=in_id,
+            reporting_node_id=reporting_id,
             output_node_id=out_id,
         )
 

@@ -308,6 +308,7 @@ def render_record_workspace(selected, u):
             (r"^R031: upstream forest/farm areas should include at least one legality or land-right document$", lambda m: t("rule.R031")),
             (r"^R032: upstream forest/farm areas should include at least one map or boundary document$", lambda m: t("rule.R032")),
             (r"^R033: upstream forest/farm areas should include at least one site photo or field assessment$", lambda m: t("rule.R033")),
+            (r"^R034: reporting entity is recommended for txn (?P<txn_id>.+)$", lambda m: t("rule.R034", txn_id=m["txn_id"])),
         ]
 
         for pattern, formatter in patterns:
