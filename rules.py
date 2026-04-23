@@ -83,10 +83,15 @@ def validate_record_v1(rec, ev_rows, txn_rows, node_rows, geo_rows) -> Tuple[Lis
 
     for t in txn_rows:
         input_type = node_name_to_type.get((t["input_node_name"] or "").strip().lower(), "")
+        reporting_type = node_name_to_type.get((t["reporting_node_name"] or "").strip().lower(), "")
         output_type = node_name_to_type.get((t["output_node_name"] or "").strip().lower(), "")
         if not ((t["reporting_node_name"] if "reporting_node_name" in t.keys() else "") or "").strip():
             warnings.append(f"R034: reporting entity is recommended for txn {t['txn_id']}")
-        if input_type in {"forest", "farm"} or output_type in {"forest", "farm"}:
+        if (
+            input_type in {"forest", "farm"}
+            or reporting_type in {"forest", "farm"}
+            or output_type in {"forest", "farm"}
+        ):
             upstream_txn_count += 1
             geo_id = (t["geo_id"] or "").strip()
             if not geo_id:
