@@ -41,7 +41,7 @@ def _build_evidence_target_options(txn_rows, node_rows, geo_rows) -> dict[str, l
     txn_options = []
     for txn in txn_rows:
         product = (txn["product_name"] or "").strip() or t("workspace.txn_product_fallback")
-        output = (txn["output_node_name"] or "").strip() or t("workspace.txn_output_fallback")
+        output = (txn["output_node_name"] or "").strip() or t("workspace.txn_to_fallback")
         txn_options.append((txn["txn_id"], f"{product} -> {output}"))
 
     node_options = []
@@ -119,8 +119,9 @@ def _txns_for_node(txn_rows, node_name: str):
     matched = []
     for txn in txn_rows:
         input_name = (txn["input_node_name"] or "").strip().lower()
+        reporting_name = (txn.get("reporting_node_name") or "").strip().lower()
         output_name = (txn["output_node_name"] or "").strip().lower()
-        if node_name in {input_name, output_name}:
+        if node_name in {input_name, reporting_name, output_name}:
             matched.append(dict(txn))
     return matched
 
@@ -830,6 +831,7 @@ def render_workspace_main(selected, u, rec, can_edit, list_txns, replace_txns, l
                     # Row 1 (Sales / Output)
                     "product_name": "",
                     "output_node_name": "",
+                    "reporting_node_name": "",
                     "species_common": "",
                     "species_latin": "",
                     "product_weight": None,
@@ -862,7 +864,7 @@ def render_workspace_main(selected, u, rec, can_edit, list_txns, replace_txns, l
     for i, txn in ordered_txns:
         product_name = (txn.get("product_name") or "").strip()
         output_node_name = (txn.get("output_node_name") or "").strip()
-        display = f"{product_name or t('workspace.txn_product_fallback')} → {output_node_name or t('workspace.txn_output_fallback')}"
+        display = f"{product_name or t('workspace.txn_product_fallback')} → {output_node_name or t('workspace.txn_to_fallback')}"
 
         focus_txn = st.session_state.get("focus_txn_id")
         with st.expander(
@@ -973,6 +975,13 @@ def render_workspace_main(selected, u, rec, can_edit, list_txns, replace_txns, l
                     key=f"txn_input_node_{selected}_{i}",
                     disabled=not editable,
                 )
+                txn["reporting_node_name"] = st.text_input(
+                    t("field.txn_reporting_node_name"),
+                    value=txn.get("reporting_node_name") or "",
+                    key=f"txn_reporting_node_{selected}_{i}",
+                    disabled=not editable,
+                )
+                st.caption(t("workspace.txn_reporting_caption"))
                 unit_options = ["", "m3", "kg", "ton"]
                 current_unit = txn.get("quantity_unit") or ""
                 if current_unit not in unit_options:
@@ -1068,7 +1077,7 @@ def render_workspace_main(selected, u, rec, can_edit, list_txns, replace_txns, l
     for txn in draft:
         product_name = (txn.get("product_name") or "").strip()
         output_node_name = (txn.get("output_node_name") or "").strip()
-        txn_display = f"{product_name or t('workspace.txn_product_fallback')} → {output_node_name or t('workspace.txn_output_fallback')}"
+        txn_display = f"{product_name or t('workspace.txn_product_fallback')} → {output_node_name or t('workspace.txn_to_fallback')}"
 
         summary_rows.append(
             {
@@ -1081,6 +1090,7 @@ def render_workspace_main(selected, u, rec, can_edit, list_txns, replace_txns, l
                 "txn.geo_id": txn.get("geo_id") or "",
                 # Row 2 (key fields)
                 "txn.input_node_name": txn.get("input_node_name") or "",
+                "txn.reporting_node_name": txn.get("reporting_node_name") or "",
                 "txn.quantity_unit": txn.get("quantity_unit") or "",
                 "txn.input_quantity": txn.get("input_quantity") if txn.get("input_quantity") is not None else 0.0,
                 "txn.output_quantity": txn.get("output_quantity") if txn.get("output_quantity") is not None else 0.0,
@@ -1108,6 +1118,7 @@ def render_workspace_main(selected, u, rec, can_edit, list_txns, replace_txns, l
             "txn.species_common": st.column_config.TextColumn(t("field.txn_species_common")),
             "txn.geo_id": st.column_config.TextColumn(t("field.txn_geo_id")),
             "txn.input_node_name": st.column_config.TextColumn(t("field.txn_input_node_name")),
+            "txn.reporting_node_name": st.column_config.TextColumn(t("field.txn_reporting_node_name")),
             "txn.quantity_unit": st.column_config.SelectboxColumn(
                 t("field.txn_quantity_unit"),
                 options=["", "m3", "kg", "ton"],
@@ -1142,6 +1153,7 @@ def render_workspace_main(selected, u, rec, can_edit, list_txns, replace_txns, l
                 txn["geo_id"] = row.get("txn.geo_id", "")
 
                 txn["input_node_name"] = row.get("txn.input_node_name", "")
+                txn["reporting_node_name"] = row.get("txn.reporting_node_name", "")
                 txn["quantity_unit"] = row.get("txn.quantity_unit", "")
                 txn["input_quantity"] = row.get("txn.input_quantity", 0.0)
                 txn["output_quantity"] = row.get("txn.output_quantity", 0.0)
