@@ -2,11 +2,12 @@ import sqlite3
 
 import streamlit as st
 
-from i18n import t
+from i18n import option_label, t
 
 
 ROLE_OPTIONS = ["admin", "participant", "dds_viewer"]
 STATUS_OPTIONS = ["active", "disabled"]
+ORG_TYPE_OPTIONS = ["", "forest", "farm", "processor", "trader"]
 
 
 def render_admin_page(
@@ -17,6 +18,7 @@ def render_admin_page(
     update_user_status,
     update_user_password,
     delete_user,
+    update_org_type,
     hash_password,
 ):
     st.subheader(t("admin.title"))
@@ -25,7 +27,53 @@ def render_admin_page(
 
     org_rows = list_orgs()
     org_ids = [row["org_id"] for row in org_rows]
-    org_labels = {row["org_id"]: f"{row['org_name']} ({row['org_id']})" for row in org_rows}
+    org_labels = {
+        row["org_id"]: (
+            f"{row['org_name']} ({row['org_id']})"
+            + (
+                f" · {option_label('node_type', row['org_type'])}"
+                if (row["org_type"] or "").strip()
+                else ""
+            )
+        )
+        for row in org_rows
+    }
+
+    st.markdown(f"#### {t('admin.orgs_title')}")
+    st.dataframe(
+        [
+            {
+                t("admin.col_org"): row["org_name"],
+                t("admin.col_org_id"): row["org_id"],
+                t("admin.col_org_type"): option_label("node_type", row["org_type"]) if (row["org_type"] or "").strip() else t("admin.org_type_unspecified"),
+            }
+            for row in org_rows
+        ],
+        use_container_width=True,
+    )
+
+    with st.form(key="admin_org_type_form"):
+        selected_org_id = st.selectbox(
+            t("admin.select_org"),
+            org_ids,
+            format_func=lambda value: org_labels.get(value, value),
+        )
+        selected_org = next(row for row in org_rows if row["org_id"] == selected_org_id)
+        current_org_type = (selected_org["org_type"] or "").strip()
+        new_org_type = st.selectbox(
+            t("admin.org_type"),
+            ORG_TYPE_OPTIONS,
+            index=ORG_TYPE_OPTIONS.index(current_org_type) if current_org_type in ORG_TYPE_OPTIONS else 0,
+            format_func=lambda value: option_label("node_type", value) if value else t("admin.org_type_unspecified"),
+        )
+        org_type_submitted = st.form_submit_button(t("admin.save_org_type"))
+
+    if org_type_submitted:
+        update_org_type(selected_org_id, new_org_type)
+        st.success(t("admin.org_type_saved"))
+        st.rerun()
+
+    st.markdown("---")
 
     st.markdown(f"#### {t('admin.create_title')}")
     with st.form(key="admin_create_user_form", clear_on_submit=True):
@@ -77,6 +125,7 @@ def render_admin_page(
                 t("admin.col_name"): row["name"],
                 t("admin.col_email"): row["email"],
                 t("admin.col_org"): row["org_name"] or row["org_id"],
+                t("admin.col_org_type"): option_label("node_type", row["org_type"]) if (row["org_type"] or "").strip() else t("admin.org_type_unspecified"),
                 t("admin.col_role"): t(f"admin.role_{row['role']}"),
                 t("admin.col_status"): t(f"admin.status_{row['status']}"),
                 t("admin.col_created"): row["created_at"],

@@ -370,6 +370,8 @@ def render_source_page_section(
 
     if not upstream_nodes:
         st.info(t("workspace.source_page_empty"))
+        if (u.get("org_type") or "").strip() in {"forest", "farm"}:
+            st.caption(t("workspace.source_page_user_hint"))
         return
 
     st.info(t("workspace.source_page_logic"))
