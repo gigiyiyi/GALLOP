@@ -44,7 +44,8 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS orgs (
                 org_id TEXT PRIMARY KEY,
-                org_name TEXT NOT NULL UNIQUE
+                org_name TEXT NOT NULL UNIQUE,
+                org_type TEXT
             );
 
             CREATE TABLE IF NOT EXISTS users (
@@ -162,6 +163,7 @@ def init_db():
             """
         )
         _ensure_column(conn, "records", "mode_origin", "TEXT")
+        _ensure_column(conn, "orgs", "org_type", "TEXT")
         _ensure_column(conn, "records", "review_coordinator_name", "TEXT")
         _ensure_column(conn, "records", "review_coordinator_email", "TEXT")
         _ensure_column(conn, "records", "review_coordinator_note", "TEXT")
@@ -243,8 +245,14 @@ def seed_demo_data(hash_password_fn):
         if row["c"] > 0:
             return
 
-        conn.execute("INSERT OR IGNORE INTO orgs VALUES (?,?)", ("ORG_BUYER", "Buyer Org"))
-        conn.execute("INSERT OR IGNORE INTO orgs VALUES (?,?)", ("ORG_OTHER", "Other Org"))
+        conn.execute(
+            "INSERT OR IGNORE INTO orgs(org_id, org_name, org_type) VALUES (?,?,?)",
+            ("ORG_BUYER", "Buyer Org", "trader"),
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO orgs(org_id, org_name, org_type) VALUES (?,?,?)",
+            ("ORG_OTHER", "Other Org", "processor"),
+        )
 
         pw = hash_password_fn("demo123")
         users = [
@@ -262,7 +270,12 @@ def seed_demo_data(hash_password_fn):
 def get_user_by_email(email: str):
     with get_conn() as conn:
         return conn.execute(
-            "SELECT * FROM users WHERE email=?",
+            """
+            SELECT u.*, o.org_name, o.org_type
+            FROM users u
+            LEFT JOIN orgs o ON o.org_id = u.org_id
+            WHERE u.email=?
+            """,
             (email.strip().lower(),),
         ).fetchone()
 
@@ -278,7 +291,7 @@ def list_users():
     with get_conn() as conn:
         return conn.execute(
             """
-            SELECT u.*, o.org_name
+            SELECT u.*, o.org_name, o.org_type
             FROM users u
             LEFT JOIN orgs o ON o.org_id = u.org_id
             ORDER BY u.created_at DESC
@@ -308,11 +321,24 @@ def create_user(email: str, name: str, password_hash: str, org_id: str, role: st
     return user_id
 
 
-def ensure_org(org_id: str, org_name: str):
+def ensure_org(org_id: str, org_name: str, org_type: str | None = None):
     with get_conn() as conn:
         conn.execute(
-            "INSERT OR IGNORE INTO orgs(org_id, org_name) VALUES (?, ?)",
-            (org_id, org_name),
+            "INSERT OR IGNORE INTO orgs(org_id, org_name, org_type) VALUES (?, ?, ?)",
+            (org_id, org_name, org_type),
+        )
+        if org_type is not None:
+            conn.execute(
+                "UPDATE orgs SET org_type=? WHERE org_id=?",
+                (org_type, org_id),
+            )
+
+
+def update_org_type(org_id: str, org_type: str):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE orgs SET org_type=? WHERE org_id=?",
+            (org_type or None, org_id),
         )
 
 

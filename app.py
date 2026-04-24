@@ -32,6 +32,7 @@ from db import (
     get_user_by_email,
     list_orgs,
     list_users,
+    update_org_type,
     list_records_for_org,
     get_record_for_org,
     create_record,
@@ -82,6 +83,7 @@ def bootstrap_admin_from_secrets():
         secret_name = st.secrets.get("ADMIN_NAME", "GALLOP Admin")
         secret_org_id = st.secrets.get("ADMIN_ORG_ID", "ORG_ADMIN")
         secret_org_name = st.secrets.get("ADMIN_ORG_NAME", "GALLOP Admin Org")
+        secret_org_type = st.secrets.get("ADMIN_ORG_TYPE", "")
     except Exception:
         return
 
@@ -91,7 +93,7 @@ def bootstrap_admin_from_secrets():
     if admin_exists():
         return
 
-    ensure_org(secret_org_id, secret_org_name)
+    ensure_org(secret_org_id, secret_org_name, secret_org_type or None)
     db_create_user(
         secret_email,
         secret_name,
@@ -105,15 +107,15 @@ def bootstrap_admin_from_secrets():
 # Permissions
 # -------------------------------------------------
 def can_create(role: str) -> bool:
-    return role in ("admin", "participant")
+    return role == "participant"
 
 
 def can_edit(role: str) -> bool:
-    return role in ("admin", "participant")
+    return role == "participant"
 
 
 def can_seal(role: str) -> bool:
-    return role in ("admin", "participant")
+    return role == "participant"
 
 
 def can_admin(role: str) -> bool:
@@ -156,6 +158,7 @@ u = st.session_state.user
 org_lookup = {row["org_id"]: row["org_name"] for row in list_orgs()}
 org_name = (org_lookup.get(u["org_id"]) or "").strip()
 org_display = f"{org_name} ({u['org_id']})" if org_name else u["org_id"]
+org_type_display = option_label("node_type", u["org_type"]) if (u.get("org_type") or "").strip() else t("sidebar.org_type_unspecified")
 
 # Sidebar
 if "lang" not in st.session_state:
@@ -169,6 +172,7 @@ st.sidebar.selectbox(
 )
 st.sidebar.write(f"**{t('sidebar.user')}:** {u['name']} ({u['email']})")
 st.sidebar.write(f"**{t('sidebar.org')}:** {org_display}")
+st.sidebar.write(f"**{t('sidebar.org_type')}:** {org_type_display}")
 st.sidebar.write(f"**{t('sidebar.role')}:** {u['role']}")
 st.sidebar.caption(
     t("sidebar.temp_notice")
@@ -180,9 +184,10 @@ if st.sidebar.button(t("sidebar.logout")):
 
 st.title(t("app.title"))
 
-NAV_PAGES = [t("nav.dashboard"), t("nav.workspace")]
 if can_admin(u["role"]):
-    NAV_PAGES.append(t("nav.admin"))
+    NAV_PAGES = [t("nav.admin")]
+else:
+    NAV_PAGES = [t("nav.dashboard"), t("nav.workspace")]
 
 if st.session_state.get("nav_page") not in NAV_PAGES:
     st.session_state["nav_page"] = NAV_PAGES[0]
@@ -396,10 +401,13 @@ def render_record_workspace(selected, u):
         ),
     }
 
-    show_source_page = source_page_applies(list_nodes(selected), list_txns(selected))
+    user_is_source_org = (u.get("org_type") or "").strip() in {"forest", "farm"}
+    show_source_page = user_is_source_org or source_page_applies(list_nodes(selected), list_txns(selected))
 
     if u["role"] == "dds_viewer":
         section_order = ["transactions", "evidence", "source_page", "nodes", "geo"]
+    elif user_is_source_org:
+        section_order = ["transactions", "source_page", "geo", "evidence", "nodes"]
     else:
         section_order = ["transactions", "nodes", "geo", "source_page", "evidence"]
 
@@ -442,6 +450,7 @@ elif can_admin(u["role"]) and page == t("nav.admin"):
         update_user_status,
         update_user_password,
         delete_user,
+        update_org_type,
         hash_password,
     )
 elif page == t("nav.workspace"):
@@ -471,4 +480,17 @@ elif page == t("nav.workspace"):
     st.session_state["workspace_selected_record"] = selected
 
     # 3) 渲染 Workspace 主体
-    render_record_workspace(selected, u)              
+    render_record_workspace(selected, u)
+else:
+    if can_admin(u["role"]):
+        render_admin_page(
+            u,
+            list_users,
+            list_orgs,
+            db_create_user,
+            update_user_status,
+            update_user_password,
+            delete_user,
+            update_org_type,
+            hash_password,
+        )
