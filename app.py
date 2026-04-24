@@ -49,6 +49,7 @@ from db import (
     update_record_contact,
     update_user_status,
     update_user_password,
+    delete_user,
     submit_record,
     seal_record,
     downgrade_record,
@@ -421,6 +422,7 @@ elif can_admin(u["role"]) and page == t("nav.admin"):
         db_create_user,
         update_user_status,
         update_user_password,
+        delete_user,
         hash_password,
     )
 elif page == t("nav.workspace"):

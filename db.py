@@ -340,6 +340,14 @@ def update_user_password(user_id: str, password_hash: str):
         )
 
 
+def delete_user(user_id: str):
+    with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM users WHERE user_id=?",
+            (user_id,),
+        )
+
+
 def list_records_for_org(org_id: str):
     with get_conn() as conn:
         return conn.execute(
