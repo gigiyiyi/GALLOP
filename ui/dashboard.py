@@ -6,7 +6,13 @@ from i18n import mode_label, status_label, t
 
 def _package_label(row) -> str:
     package_name = (row["case_title"] or "").strip() or t("dashboard.default_package_name")
-    return f"{package_name} · {mode_label(row['integrity_mode'])} · {status_label(row['status'])}"
+    owner_org = ""
+    try:
+        owner_org = (row["owner_org_name"] or row["owner_org_id"] or "").strip()
+    except Exception:
+        owner_org = ""
+    owner_prefix = f"{owner_org} · " if owner_org else ""
+    return f"{owner_prefix}{package_name} · {mode_label(row['integrity_mode'])} · {status_label(row['status'])}"
 
 
 def render_dashboard(u, can_create, create_record, list_records_for_org, list_txns, list_nodes, list_geos, list_evidences, validate_record_v1):
@@ -18,7 +24,7 @@ def render_dashboard(u, can_create, create_record, list_records_for_org, list_tx
     """
     st.subheader(t("dashboard.title"))
 
-    rows = list_records_for_org(u["org_id"])
+    rows = list_records_for_org() if u["role"] == "dds_viewer" else list_records_for_org(u["org_id"])
     if not rows:
         st.info(t("dashboard.no_records"))
     else:
@@ -47,6 +53,7 @@ def render_dashboard(u, can_create, create_record, list_records_for_org, list_tx
 
             dashboard_rows.append(
                 {
+                    t("dashboard.owner_org"): (r["owner_org_name"] or r["owner_org_id"]) if "owner_org_name" in r.keys() else r["owner_org_id"],
                     t("dashboard.case_title"): (r["case_title"] or "").strip() or t("dashboard.default_package_name"),
                     t("dashboard.record_id"): r["record_id"],
                     t("dashboard.mode"): mode_label(r["integrity_mode"]),
