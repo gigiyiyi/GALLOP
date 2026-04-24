@@ -37,7 +37,9 @@ from db import (
     update_org,
     update_user_org,
     list_records_for_org,
+    list_all_records,
     get_record_for_org,
+    get_record_any,
     create_record,
     create_user as db_create_user,
     list_txns,
@@ -211,11 +213,20 @@ st.session_state["nav_page"] = page
 
 def _package_label(rec) -> str:
     package_name = (rec["case_title"] or "").strip() or t("dashboard.default_package_name")
-    return f"{package_name} · {mode_label(rec['integrity_mode'])} · {status_label(rec['status'])}"
+    owner_org = ""
+    try:
+        owner_org = (rec["owner_org_name"] or rec["owner_org_id"] or "").strip()
+    except Exception:
+        owner_org = ""
+    owner_prefix = f"{owner_org} · " if owner_org else ""
+    return f"{owner_prefix}{package_name} · {mode_label(rec['integrity_mode'])} · {status_label(rec['status'])}"
 
 
 def render_record_workspace(selected, u):
-    rec = get_record_for_org(selected, u["org_id"])
+    if u["role"] == "dds_viewer":
+        rec = get_record_any(selected)
+    else:
+        rec = get_record_for_org(selected, u["org_id"])
     if not rec:
         st.error("Access denied or record not found.")
         st.stop()
@@ -440,7 +451,8 @@ def render_record_workspace(selected, u):
 
 if page == t("nav.dashboard"):
     render_dashboard(
-        u, can_create, create_record, list_records_for_org,
+        u, can_create, create_record,
+        list_all_records if u["role"] == "dds_viewer" else list_records_for_org,
         list_txns, list_nodes, list_geos, list_evidences,
         validate_record_v1
     )
@@ -462,7 +474,7 @@ elif can_admin(u["role"]) and page == t("nav.admin"):
 elif page == t("nav.workspace"):
 
     # 1) 列出当前组织可访问的 records
-    rows = list_records_for_org(u["org_id"])
+    rows = list_all_records() if u["role"] == "dds_viewer" else list_records_for_org(u["org_id"])
     if not rows:
         st.info(t("workspace.no_records"))
         st.stop()

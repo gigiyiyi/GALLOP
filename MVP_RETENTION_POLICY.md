@@ -26,13 +26,17 @@ The exported ZIP package is the durable handover artifact. The in-app workspace 
 ### MVP Retention Windows
 
 - Active records may remain in the app while they are being worked on.
-- Records are retained for a short working period after the last activity.
+- `draft`, `submitted`, and `sealed` records are all retained only within a short review window after the last activity.
+- `submitted` and `sealed` records are already considered submitted; the retention window is for short-term review and correction, not for deciding whether submission occurred.
+- DDS viewers may review packages during this temporary window and request corrections before workspace data expires.
 - Resolved review metadata should be retained for a shorter period than core package data.
 - Expired workspace data may be deleted from the application without long-term recovery guarantees.
 
 ### Default MVP Technical Policy
 
 - Records in `draft`, `submitted`, or `sealed` state are eligible for purge after `30 days` of inactivity.
+- The inactivity clock is based on `last_activity_at`, not on `submitted_at` or `sealed_at` alone.
+- Any correction, revision, review follow-up, or other package activity resets the 30-day review window.
 - Short-lived review or correction metadata should be purged sooner when implemented.
 - Files stored under `data_files/` are deleted together with their expired record.
 

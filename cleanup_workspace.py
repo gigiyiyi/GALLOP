@@ -52,7 +52,7 @@ def delete_record(record_id: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Purge expired GALLOP MVP workspace data.")
+    parser = argparse.ArgumentParser(description="Purge GALLOP MVP workspace data that has been inactive beyond the retention window.")
     parser.add_argument("--retention-days", type=int, default=RETENTION_DAYS)
     parser.add_argument("--apply", action="store_true", help="Delete expired records instead of only listing them.")
     args = parser.parse_args()
@@ -62,7 +62,7 @@ def main():
         print("No expired records found.")
         return
 
-    print(f"Found {len(expired)} expired record(s) in {DB_PATH}.")
+    print(f"Found {len(expired)} expired record(s) in {DB_PATH} based on last_activity_at and a {args.retention_days}-day retention window.")
     for row in expired:
         print(f"- {row['record_id']} | {row['status']} | {row['case_title']} | last_activity_at={row['last_activity_at']}")
 

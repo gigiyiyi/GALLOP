@@ -409,11 +409,36 @@ def list_records_for_org(org_id: str):
         ).fetchall()
 
 
+def list_all_records():
+    with get_conn() as conn:
+        return conn.execute(
+            """
+            SELECT r.*, o.org_name AS owner_org_name, o.org_type AS owner_org_type
+            FROM records r
+            LEFT JOIN orgs o ON o.org_id = r.owner_org_id
+            ORDER BY r.created_at DESC
+            """
+        ).fetchall()
+
+
 def get_record_for_org(record_id: str, org_id: str):
     with get_conn() as conn:
         return conn.execute(
             "SELECT * FROM records WHERE record_id=? AND owner_org_id=?",
             (record_id, org_id),
+        ).fetchone()
+
+
+def get_record_any(record_id: str):
+    with get_conn() as conn:
+        return conn.execute(
+            """
+            SELECT r.*, o.org_name AS owner_org_name, o.org_type AS owner_org_type
+            FROM records r
+            LEFT JOIN orgs o ON o.org_id = r.owner_org_id
+            WHERE r.record_id=?
+            """,
+            (record_id,),
         ).fetchone()
 
 
