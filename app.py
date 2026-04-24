@@ -274,21 +274,36 @@ def render_record_workspace(selected, u):
                 st.success(t("workspace.review_contact_saved"))
                 st.rerun()
 
-    st.markdown(f"### {t('workspace.guide_title')}")
-    st.markdown(
-        "\n".join(
-            [
-                t("workspace.guide_intro"),
-                t("workspace.guide_1"),
-                t("workspace.guide_2"),
-                t("workspace.guide_3"),
-                t("workspace.guide_4"),
-                t("workspace.guide_5"),
-                t("workspace.guide_6"),
-            ]
+    if u["role"] == "dds_viewer":
+        st.markdown(f"### {t('workspace.review_guide_title')}")
+        st.markdown(
+            "\n".join(
+                [
+                    t("workspace.review_guide_intro"),
+                    t("workspace.review_guide_1"),
+                    t("workspace.review_guide_2"),
+                    t("workspace.review_guide_3"),
+                    t("workspace.review_guide_4"),
+                ]
+            )
         )
-    )
-    st.caption(t("workspace.guide_caption"))
+        st.caption(t("workspace.review_guide_caption"))
+    else:
+        st.markdown(f"### {t('workspace.guide_title')}")
+        st.markdown(
+            "\n".join(
+                [
+                    t("workspace.guide_intro"),
+                    t("workspace.guide_1"),
+                    t("workspace.guide_2"),
+                    t("workspace.guide_3"),
+                    t("workspace.guide_4"),
+                    t("workspace.guide_5"),
+                    t("workspace.guide_6"),
+                ]
+            )
+        )
+        st.caption(t("workspace.guide_caption"))
 
     def format_issue_message(message: str) -> str:
         if st.session_state.get("lang", "en") != "zh":
@@ -383,7 +398,11 @@ def render_record_workspace(selected, u):
 
     show_source_page = source_page_applies(list_nodes(selected), list_txns(selected))
 
-    section_order = ["transactions", "nodes", "geo", "source_page", "evidence"]
+    if u["role"] == "dds_viewer":
+        section_order = ["transactions", "evidence", "source_page", "nodes", "geo"]
+    else:
+        section_order = ["transactions", "nodes", "geo", "source_page", "evidence"]
+
     if st.session_state.get("focus_evidence_id"):
         section_order = ["evidence", "transactions", "nodes", "geo", "source_page"]
     elif st.session_state.get("focus_txn_id"):
