@@ -321,6 +321,17 @@ def create_user(email: str, name: str, password_hash: str, org_id: str, role: st
     return user_id
 
 
+def create_org(org_id: str, org_name: str, org_type: str | None = None):
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO orgs(org_id, org_name, org_type)
+            VALUES (?, ?, ?)
+            """,
+            (org_id.strip(), org_name.strip(), org_type or None),
+        )
+
+
 def ensure_org(org_id: str, org_name: str, org_type: str | None = None):
     with get_conn() as conn:
         conn.execute(
@@ -339,6 +350,22 @@ def update_org_type(org_id: str, org_type: str):
         conn.execute(
             "UPDATE orgs SET org_type=? WHERE org_id=?",
             (org_type or None, org_id),
+        )
+
+
+def update_org(org_id: str, org_name: str, org_type: str):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE orgs SET org_name=?, org_type=? WHERE org_id=?",
+            (org_name.strip(), org_type or None, org_id),
+        )
+
+
+def update_user_org(user_id: str, org_id: str):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET org_id=? WHERE user_id=?",
+            (org_id, user_id),
         )
 
 
