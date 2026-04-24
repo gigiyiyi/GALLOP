@@ -14,7 +14,10 @@ def render_admin_page(
     u,
     list_users,
     list_orgs,
+    create_org,
+    update_org,
     create_user,
+    update_user_org,
     update_user_status,
     update_user_password,
     delete_user,
@@ -52,26 +55,62 @@ def render_admin_page(
         use_container_width=True,
     )
 
-    with st.form(key="admin_org_type_form"):
-        selected_org_id = st.selectbox(
-            t("admin.select_org"),
-            org_ids,
-            format_func=lambda value: org_labels.get(value, value),
-        )
-        selected_org = next(row for row in org_rows if row["org_id"] == selected_org_id)
-        current_org_type = (selected_org["org_type"] or "").strip()
-        new_org_type = st.selectbox(
-            t("admin.org_type"),
-            ORG_TYPE_OPTIONS,
-            index=ORG_TYPE_OPTIONS.index(current_org_type) if current_org_type in ORG_TYPE_OPTIONS else 0,
-            format_func=lambda value: option_label("node_type", value) if value else t("admin.org_type_unspecified"),
-        )
-        org_type_submitted = st.form_submit_button(t("admin.save_org_type"))
+    create_org_col, edit_org_col = st.columns(2)
 
-    if org_type_submitted:
-        update_org_type(selected_org_id, new_org_type)
-        st.success(t("admin.org_type_saved"))
-        st.rerun()
+    with create_org_col:
+        with st.form(key="admin_create_org_form", clear_on_submit=True):
+            new_org_id = st.text_input(t("admin.new_org_id"))
+            new_org_name = st.text_input(t("admin.new_org_name"))
+            new_org_type = st.selectbox(
+                t("admin.org_type"),
+                ORG_TYPE_OPTIONS,
+                format_func=lambda value: option_label("node_type", value) if value else t("admin.org_type_unspecified"),
+                key="admin_create_org_type",
+            )
+            create_org_submitted = st.form_submit_button(t("admin.create_org_button"))
+
+        if create_org_submitted:
+            if not new_org_id.strip() or not new_org_name.strip():
+                st.error(t("admin.create_org_missing"))
+            else:
+                try:
+                    create_org(new_org_id, new_org_name, new_org_type)
+                    st.success(t("admin.create_org_success", org_id=new_org_id.strip()))
+                    st.rerun()
+                except sqlite3.IntegrityError:
+                    st.error(t("admin.create_org_duplicate"))
+
+    with edit_org_col:
+        with st.form(key="admin_org_type_form"):
+            selected_org_id = st.selectbox(
+                t("admin.select_org"),
+                org_ids,
+                format_func=lambda value: org_labels.get(value, value),
+            )
+            selected_org = next(row for row in org_rows if row["org_id"] == selected_org_id)
+            current_org_type = (selected_org["org_type"] or "").strip()
+            edited_org_name = st.text_input(
+                t("admin.edit_org_name"),
+                value=selected_org["org_name"] or "",
+            )
+            new_org_type = st.selectbox(
+                t("admin.org_type"),
+                ORG_TYPE_OPTIONS,
+                index=ORG_TYPE_OPTIONS.index(current_org_type) if current_org_type in ORG_TYPE_OPTIONS else 0,
+                format_func=lambda value: option_label("node_type", value) if value else t("admin.org_type_unspecified"),
+            )
+            org_type_submitted = st.form_submit_button(t("admin.save_org_type"))
+
+        if org_type_submitted:
+            if not edited_org_name.strip():
+                st.error(t("admin.edit_org_missing"))
+            else:
+                try:
+                    update_org(selected_org_id, edited_org_name, new_org_type)
+                    st.success(t("admin.org_type_saved"))
+                    st.rerun()
+                except sqlite3.IntegrityError:
+                    st.error(t("admin.edit_org_duplicate"))
 
     st.markdown("---")
 
@@ -164,6 +203,12 @@ def render_admin_page(
         delete_block_reason = t("admin.delete_last_admin_blocked")
 
     with st.form(key="admin_manage_user_form"):
+        new_org_id = st.selectbox(
+            t("admin.org"),
+            org_ids,
+            index=org_ids.index(selected_user["org_id"]) if selected_user["org_id"] in org_ids else 0,
+            format_func=lambda value: org_labels.get(value, value),
+        )
         new_status = st.selectbox(
             t("admin.status"),
             STATUS_OPTIONS,
@@ -174,6 +219,7 @@ def render_admin_page(
         save = st.form_submit_button(t("admin.save_changes"))
 
     if save:
+        update_user_org(selected_user_id, new_org_id)
         update_user_status(selected_user_id, new_status)
         if new_password.strip():
             update_user_password(selected_user_id, hash_password(new_password))
