@@ -79,14 +79,20 @@ def render_dashboard(u, can_create, create_record, list_records_for_org, list_tx
 
         col_open, col_hint = st.columns([1, 3])
         with col_open:
-            if st.button(t("dashboard.open_workspace"), key="open_workspace_btn"):
+            open_label = t("dashboard.open_review") if u["role"] == "dds_viewer" else t("dashboard.open_workspace")
+            if st.button(open_label, key="open_workspace_btn"):
                 st.session_state["workspace_selected_record"] = selected
                 st.session_state["nav_target"] = t("nav.workspace")
                 st.rerun()
                 st.stop()
 
         with col_hint:
-            st.caption(t("dashboard.tip"))
+            st.caption(t("dashboard.tip_viewer") if u["role"] == "dds_viewer" else t("dashboard.tip"))
+
+    if not can_create(u["role"]):
+        st.markdown("---")
+        st.info(t("dashboard.viewer_help"))
+        return
 
     st.markdown("---")
     st.subheader(t("dashboard.create_title"))
