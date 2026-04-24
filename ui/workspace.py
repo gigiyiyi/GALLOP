@@ -108,8 +108,18 @@ def _localized_evidence_meta(evidence_type: str) -> dict | None:
     }
 
 
-def _upstream_nodes(node_rows):
-    return [dict(n) for n in node_rows if (n["type"] or "").strip() in {"forest", "farm"}]
+def _reporting_upstream_nodes(node_rows, txn_rows):
+    reporting_names = {
+        (txn.get("reporting_node_name") or "").strip().lower()
+        for txn in txn_rows
+        if (txn.get("reporting_node_name") or "").strip()
+    }
+    return [
+        dict(n)
+        for n in node_rows
+        if (n["type"] or "").strip() in {"forest", "farm"}
+        and (n["name"] or "").strip().lower() in reporting_names
+    ]
 
 
 def _txns_for_node(txn_rows, node_name: str):
@@ -124,6 +134,10 @@ def _txns_for_node(txn_rows, node_name: str):
         if node_name in {input_name, reporting_name, output_name}:
             matched.append(dict(txn))
     return matched
+
+
+def source_page_applies(node_rows, txn_rows) -> bool:
+    return bool(_reporting_upstream_nodes(node_rows, txn_rows))
 
 
 def _geo_labels_map(geo_rows):
@@ -350,7 +364,7 @@ def render_source_page_section(
     txn_rows = list_txns(selected)
     geo_rows = list_geos(selected)
     evidence_rows = list_evidences(selected)
-    upstream_nodes = _upstream_nodes(node_rows)
+    upstream_nodes = _reporting_upstream_nodes(node_rows, txn_rows)
 
     st.caption(t("workspace.source_page_intro"))
 
@@ -1037,6 +1051,7 @@ def render_workspace_main(selected, u, rec, can_edit, list_txns, replace_txns, l
 
             # Row 3 — Assessment
             st.markdown(f"**{t('workspace.txn_row3')}**")
+            st.caption(t("workspace.txn_risk_scope_caption"))
             a1, a2 = st.columns([1, 3])
 
             with a1:
