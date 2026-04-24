@@ -87,15 +87,11 @@ def validate_record_v1(rec, ev_rows, txn_rows, node_rows, geo_rows) -> Tuple[Lis
         output_type = node_name_to_type.get((t["output_node_name"] or "").strip().lower(), "")
         if not ((t["reporting_node_name"] if "reporting_node_name" in t.keys() else "") or "").strip():
             warnings.append(f"R034: reporting entity is recommended for txn {t['txn_id']}")
-        if (
-            input_type in {"forest", "farm"}
-            or reporting_type in {"forest", "farm"}
-            or output_type in {"forest", "farm"}
-        ):
+        if reporting_type in {"forest", "farm"}:
             upstream_txn_count += 1
             geo_id = (t["geo_id"] or "").strip()
             if not geo_id:
-                errors.append(f"R030: upstream forest/farm transaction requires txn.geo_id for txn {t['txn_id']}")
+                errors.append(f"R030: reporting forest/farm transaction requires txn.geo_id for txn {t['txn_id']}")
             else:
                 upstream_geo_ids.add(geo_id)
 
@@ -112,11 +108,11 @@ def validate_record_v1(rec, ev_rows, txn_rows, node_rows, geo_rows) -> Tuple[Lis
 
     if upstream_txn_count:
         if upstream_legal_doc_count < 1:
-            warnings.append("R031: upstream forest/farm areas should include at least one legality or land-right document")
+            warnings.append("R031: reporting forest/farm areas should include at least one legality or land-right document")
         if upstream_map_doc_count < 1:
-            warnings.append("R032: upstream forest/farm areas should include at least one map or boundary document")
+            warnings.append("R032: reporting forest/farm areas should include at least one map or boundary document")
         if upstream_verification_doc_count < 1:
-            warnings.append("R033: upstream forest/farm areas should include at least one site photo or field assessment")
+            warnings.append("R033: reporting forest/farm areas should include at least one site photo or field assessment")
 
     if rec["integrity_mode"] == "source_fact":
         # R021/R022/R025 (+ R023): txn assessment required and paired
@@ -139,18 +135,6 @@ def validate_record_v1(rec, ev_rows, txn_rows, node_rows, geo_rows) -> Tuple[Lis
         for e in ev_rows:
             if not (e["link_id"] and str(e["link_id"]).strip()):
                 errors.append(f"R005: missing link_id for {e['evidence_id']}")
-
-        # R026: source_fact requires at least one geo anchor
-        if len(geo_ids) < 1:
-            errors.append("R026: source_fact requires at least one geo anchor (geo.id)")
-
-        # R028: source_fact recommends txn.geo_id (warning only)
-        for t in txn_rows:
-            geo_id = (t["geo_id"] or "").strip()
-            if not geo_id:
-                warnings.append(
-                    f"R028: source_fact recommends providing txn.geo_id for txn {t['txn_id']}"
-                )
 
         # R029: txn.geo_id must reference existing geo.id
         for t in txn_rows:

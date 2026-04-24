@@ -10,6 +10,7 @@ from ui.workspace import (
     render_source_page_section,
     render_evidence_section,
     render_validate_section,
+    source_page_applies,
 )
 from constants import (
     INTEGRITY_MODE_LABELS,
@@ -305,12 +306,11 @@ def render_record_workspace(selected, u):
             (r"^R025: txn assessment fields must be paired for txn\.id (?P<txn_id>.+)$", lambda m: t("rule.R025", txn_id=m["txn_id"])),
             (r"^R026: .+$", lambda m: t("rule.R026")),
             (r"^R027: .+$", lambda m: t("rule.R027")),
-            (r"^R028: source_fact recommends providing txn\.geo_id for txn (?P<txn_id>.+)$", lambda m: t("rule.R028", txn_id=m["txn_id"])),
             (r"^R029: txn (?P<txn_id>.+) references non-existing geo\.id: (?P<geo_id>.+)$", lambda m: t("rule.R029", txn_id=m["txn_id"], geo_id=m["geo_id"])),
-            (r"^R030: upstream forest/farm transaction requires txn\.geo_id for txn (?P<txn_id>.+)$", lambda m: t("rule.R030", txn_id=m["txn_id"])),
-            (r"^R031: upstream forest/farm areas should include at least one legality or land-right document$", lambda m: t("rule.R031")),
-            (r"^R032: upstream forest/farm areas should include at least one map or boundary document$", lambda m: t("rule.R032")),
-            (r"^R033: upstream forest/farm areas should include at least one site photo or field assessment$", lambda m: t("rule.R033")),
+            (r"^R030: reporting forest/farm transaction requires txn\.geo_id for txn (?P<txn_id>.+)$", lambda m: t("rule.R030", txn_id=m["txn_id"])),
+            (r"^R031: reporting forest/farm areas should include at least one legality or land-right document$", lambda m: t("rule.R031")),
+            (r"^R032: reporting forest/farm areas should include at least one map or boundary document$", lambda m: t("rule.R032")),
+            (r"^R033: reporting forest/farm areas should include at least one site photo or field assessment$", lambda m: t("rule.R033")),
             (r"^R034: reporting entity is recommended for txn (?P<txn_id>.+)$", lambda m: t("rule.R034", txn_id=m["txn_id"])),
         ]
 
@@ -380,6 +380,8 @@ def render_record_workspace(selected, u):
         ),
     }
 
+    show_source_page = source_page_applies(list_nodes(selected), list_txns(selected))
+
     section_order = ["transactions", "nodes", "geo", "source_page", "evidence"]
     if st.session_state.get("focus_evidence_id"):
         section_order = ["evidence", "transactions", "nodes", "geo", "source_page"]
@@ -387,6 +389,8 @@ def render_record_workspace(selected, u):
         section_order = ["transactions", "nodes", "geo", "source_page", "evidence"]
 
     for section_name in section_order:
+        if section_name == "source_page" and not show_source_page:
+            continue
         sections[section_name]()
 
     render_validate_section(
