@@ -151,6 +151,9 @@ if "user" not in st.session_state:
     st.stop()
 
 u = st.session_state.user
+org_lookup = {row["org_id"]: row["org_name"] for row in list_orgs()}
+org_name = (org_lookup.get(u["org_id"]) or "").strip()
+org_display = f"{org_name} ({u['org_id']})" if org_name else u["org_id"]
 
 # Sidebar
 if "lang" not in st.session_state:
@@ -163,7 +166,7 @@ st.sidebar.selectbox(
     key="lang",
 )
 st.sidebar.write(f"**{t('sidebar.user')}:** {u['name']} ({u['email']})")
-st.sidebar.write(f"**{t('sidebar.org')}:** {u['org_id']}")
+st.sidebar.write(f"**{t('sidebar.org')}:** {org_display}")
 st.sidebar.write(f"**{t('sidebar.role')}:** {u['role']}")
 st.sidebar.caption(
     t("sidebar.temp_notice")
