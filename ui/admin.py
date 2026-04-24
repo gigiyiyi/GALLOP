@@ -16,6 +16,7 @@ def render_admin_page(
     create_user,
     update_user_status,
     update_user_password,
+    delete_user,
     hash_password,
 ):
     st.subheader(t("admin.title"))
@@ -103,6 +104,16 @@ def render_admin_page(
         )
     )
 
+    admin_count = sum(1 for row in user_rows if row["role"] == "admin")
+    can_delete_selected = True
+    delete_block_reason = ""
+    if selected_user_id == u["user_id"]:
+        can_delete_selected = False
+        delete_block_reason = t("admin.delete_self_blocked")
+    elif selected_user["role"] == "admin" and admin_count <= 1:
+        can_delete_selected = False
+        delete_block_reason = t("admin.delete_last_admin_blocked")
+
     with st.form(key="admin_manage_user_form"):
         new_status = st.selectbox(
             t("admin.status"),
@@ -119,3 +130,26 @@ def render_admin_page(
             update_user_password(selected_user_id, hash_password(new_password))
         st.success(t("admin.saved"))
         st.rerun()
+
+    st.markdown(f"##### {t('admin.delete_title')}")
+    if delete_block_reason:
+        st.info(delete_block_reason)
+
+    with st.form(key="admin_delete_user_form"):
+        confirm_email = st.text_input(
+            t("admin.delete_confirm"),
+            help=t("admin.delete_confirm_help", email=selected_user["email"]),
+            disabled=not can_delete_selected,
+        )
+        delete_submitted = st.form_submit_button(
+            t("admin.delete_button"),
+            disabled=not can_delete_selected,
+        )
+
+    if delete_submitted:
+        if confirm_email.strip().lower() != (selected_user["email"] or "").strip().lower():
+            st.error(t("admin.delete_mismatch"))
+        else:
+            delete_user(selected_user_id)
+            st.success(t("admin.delete_success", email=selected_user["email"]))
+            st.rerun()
